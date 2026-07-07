@@ -8,7 +8,7 @@ terraform {
   }
 
   backend "gcs" {
-    bucket = "mafat-ai-gee-monitor-dev-tfstate"
+    bucket = "mafat-ai-gee-monitor-dev-cicd-tfstate"
     prefix = "hello-world/runner"
   }
 }

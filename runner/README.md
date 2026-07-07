@@ -32,8 +32,8 @@ requires repo-admin-level access:
 ### 2. Create the Terraform state bucket (if not already done)
 
 ```bash
-gsutil mb -l me-west1 gs://mafat-ai-gee-monitor-dev-tfstate
-gsutil versioning set on gs://mafat-ai-gee-monitor-dev-tfstate
+gsutil mb -l me-west1 gs://mafat-ai-gee-monitor-dev-cicd-tfstate
+gsutil versioning set on gs://mafat-ai-gee-monitor-dev-cicd-tfstate
 ```
 
 ### 3. Apply

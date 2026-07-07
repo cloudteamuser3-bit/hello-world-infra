@@ -10,10 +10,10 @@ terraform {
   # Each environment has its own state file in its own GCS prefix - this is
   # what makes it physically impossible to apply a dev plan against prod's
   # state. Create the state bucket itself once, by hand, before first apply:
-  #   gsutil mb -l me-west1 gs://mafat-ai-gee-monitor-dev-tfstate
-  #   gsutil versioning set on gs://mafat-ai-gee-monitor-dev-tfstate
+  #   gsutil mb -l me-west1 gs://mafat-ai-gee-monitor-dev-cicd-tfstate
+  #   gsutil versioning set on gs://mafat-ai-gee-monitor-dev-cicd-tfstate
   backend "gcs" {
-    bucket = "mafat-ai-gee-monitor-dev-tfstate"
+    bucket = "mafat-ai-gee-monitor-dev-cicd-tfstate"
     prefix = "hello-world/dev"
   }
 }
