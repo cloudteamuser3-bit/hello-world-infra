@@ -1,0 +1,8 @@
+# Most values are pulled automatically from ../config/project.yaml
+# (project ID, region, GitHub owner, and the three repo names). The only
+# things left here are runner-specific and rarely need to change:
+
+zone           = "me-west1-a"
+machine_type   = "e2-small"
+# runner_version = "2.319.1"
+# github_pat_secret_id = "github-actions-runner-pat"

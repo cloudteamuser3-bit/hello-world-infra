@@ -1,0 +1,5 @@
+# This repo holds the only GCP apply-level credentials in the whole system.
+# As a solo maintainer, this CODEOWNERS entry is mostly a forcing function
+# to make you consciously review before merging infra changes yourself -
+# add teammates' handles here once there are any.
+*   @cloudteamuser3-bit

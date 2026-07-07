@@ -1,0 +1,49 @@
+# =============================================================================
+# PROJECT CONFIGURATION — single source of truth for this project's particulars
+# =============================================================================
+# This file is duplicated (identically) in the app repo and the infra repo,
+# and read programmatically by both:
+#   - CI workflows parse it to populate env vars (see .github/workflows/*.yml)
+#   - Terraform reads it directly via yamldecode() (see infra repo's main.tf)
+#
+# There is intentionally no automated sync between the two copies yet — see
+# ARCHITECTURE.md "Outlook" for the plan to collapse this into one place
+# (e.g. a git submodule, or generating both from a template repo) once it's
+# proven annoying to keep in sync by hand. For a 3-repo, small-team setup,
+# manual sync + this loud warning comment is an acceptable starting point.
+# =============================================================================
+
+project:
+  name: hello-world-cicd-demo
+  gcp_project_id: mafat-ai-gee-monitor-dev
+  region: me-west1
+
+artifact_registry:
+  repository: cicd-test
+  image_name: hello-world-job
+
+cloud_run_job:
+  name: hello-world-job
+  cpu: "1"
+  memory: "512Mi"
+  timeout_seconds: 300
+  max_retries: 1
+
+# GCS bucket names must be globally unique across ALL of GCP, so each is
+# derived as "<gcp_project_id>-hello-world-<suffix>".
+environments:
+  dev:
+    bucket_suffix: d
+  staging:
+    bucket_suffix: s
+  prod:
+    bucket_suffix: p
+
+file_output:
+  file_name: hello_world.txt
+
+github:
+  org: cloudteamuser3-bit
+  app_repo: hello-world-app
+  infra_repo: hello-world-infra
+  environments_repo: hello-world-environments

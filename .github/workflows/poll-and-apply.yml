@@ -1,0 +1,110 @@
+name: Poll and apply
+
+# THIN CI / THICK SCRIPTS + POLL-BASED TRIGGERING:
+# This runs on a schedule (and can be run manually) and checks each
+# environment for a change, rather than being triggered by a
+# platform-specific dispatch event from another repo. This is the single
+# biggest portability decision in the whole system - `schedule:` with a
+# cron expression is supported in near-identical syntax by every major CI
+# platform, whereas repository_dispatch is a GitHub-only concept.
+#
+# The tradeoff, stated plainly: promotion is only as fast as the poll
+# interval below, not instant. For a small team this is a fine trade for
+# removing an entire class of platform lock-in.
+on:
+  schedule:
+    - cron: "*/10 * * * *" # every 10 minutes - tune to taste
+  workflow_dispatch: {} # allows a manual "check now" run
+
+permissions:
+  contents: write
+
+jobs:
+  poll-and-apply:
+    runs-on: [self-hosted, linux, gcp]
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [dev, staging, prod]
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --break-system-packages --quiet pyyaml
+      - run: python3 scripts/read_config.py >> "$GITHUB_ENV"
+
+      # ---- PLATFORM-SPECIFIC SEAM ----
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.PROMOTION_APP_ID }}
+          private-key: ${{ secrets.PROMOTION_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: hello-world-environments
+      # ---- END SEAM ----
+
+      - name: Check for changes
+        id: check
+        env:
+          VCS_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: ./scripts/check_for_changes.sh "${{ matrix.environment }}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Terraform apply
+        id: apply
+        if: steps.check.outputs.CHANGED == 'true'
+        run: |
+          ./scripts/terraform_apply.sh \
+            "${{ matrix.environment }}" \
+            "${{ steps.check.outputs.DESIRED_IMAGE_DIGEST }}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Smoke test
+        id: smoke
+        if: steps.check.outputs.CHANGED == 'true'
+        run: |
+          ./scripts/smoke_test.sh \
+            "${{ steps.apply.outputs.JOB_NAME }}" \
+            "${{ env.REGION }}" \
+            "${{ steps.apply.outputs.BUCKET_NAME }}"
+
+      - name: Report success
+        if: steps.check.outputs.CHANGED == 'true' && success()
+        env:
+          VCS_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          ./scripts/report_status.sh \
+            "${{ matrix.environment }}" \
+            "success" \
+            "${{ steps.check.outputs.DESIRED_IMAGE_TAG }}" \
+            "${{ steps.check.outputs.DESIRED_IMAGE_DIGEST }}" \
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: Scaffold post-mortem on failure
+        if: steps.check.outputs.CHANGED == 'true' && failure()
+        run: |
+          python3 scripts/generate_postmortem.py \
+            --environment "${{ matrix.environment }}" \
+            --image-tag "${{ steps.check.outputs.DESIRED_IMAGE_TAG }}" \
+            --image-digest "${{ steps.check.outputs.DESIRED_IMAGE_DIGEST }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --output postmortem.md
+
+      - name: Open incident issue
+        if: steps.check.outputs.CHANGED == 'true' && failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./scripts/open_incident_issue.sh \
+            "[Incident] Deploy failed - ${{ matrix.environment }} - ${{ steps.check.outputs.DESIRED_IMAGE_TAG }}" \
+            postmortem.md \
+            "incident,needs-triage,${{ matrix.environment }}"
+
+      - name: Report failure status
+        if: steps.check.outputs.CHANGED == 'true' && failure()
+        env:
+          VCS_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          ./scripts/report_status.sh \
+            "${{ matrix.environment }}" \
+            "failure" \
+            "${{ steps.check.outputs.DESIRED_IMAGE_TAG }}" \
+            "${{ steps.check.outputs.DESIRED_IMAGE_DIGEST }}" \
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
