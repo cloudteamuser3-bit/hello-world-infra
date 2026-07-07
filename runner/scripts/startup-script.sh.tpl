@@ -17,7 +17,7 @@ PROJECT_ID="${project_id}"
 # --- Install Docker ---
 if ! command -v docker &> /dev/null; then
   apt-get update
-  apt-get install -y ca-certificates curl gnupg jq
+  apt-get install -y ca-certificates curl gnupg jq python3-pip python3-venv
   install -m 0755 -d /etc/apt/keyrings
   curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
   chmod a+r /etc/apt/keyrings/docker.asc
@@ -35,11 +35,15 @@ if ! command -v gcloud &> /dev/null; then
   curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
     | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
   apt-get update
-  apt-get install -y google-cloud-cli terraform
+  apt-get install -y google-cloud-cli
 fi
 
 # --- Install Terraform (needed for infra repo's jobs) ---
 if ! command -v terraform &> /dev/null; then
+  curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+  echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+    | tee /etc/apt/sources.list.d/hashicorp.list
+  apt-get update
   apt-get install -y terraform
 fi
 
@@ -53,7 +57,7 @@ GITHUB_PAT=$(gcloud secrets versions access latest --secret="$SECRET_ID" --proje
 
 # --- Register one runner PER REPO, each in its own directory ---
 for REPO in $REPOS; do
-  RUNNER_DIR="/home/runner/actions-runner-${REPO}"
+  RUNNER_DIR="/home/runner/actions-runner-$${REPO}"
   mkdir -p "$RUNNER_DIR"
   cd "$RUNNER_DIR"
 

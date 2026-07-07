@@ -80,7 +80,6 @@ resource "google_compute_instance" "runner" {
 
   network_interface {
     network = "default"
-    access_config {} # ephemeral public IP - swap for Cloud NAT later
   }
 
   service_account {
@@ -104,5 +103,25 @@ resource "google_compute_instance" "runner" {
 
   labels = {
     purpose = "github-actions-runner"
+  }
+}
+
+# --- Cloud NAT for Internet egress from strictly private runner VM ---
+resource "google_compute_router" "router" {
+  name    = "router-default-me-west1"
+  region  = local.config.project.region
+  network = "default"
+}
+
+resource "google_compute_router_nat" "nat" {
+  name                               = "nat-default-me-west1"
+  router                             = google_compute_router.router.name
+  region                             = google_compute_router.router.region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
   }
 }

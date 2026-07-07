@@ -12,6 +12,8 @@ name: Poll and apply
 # interval below, not instant. For a small team this is a fine trade for
 # removing an entire class of platform lock-in.
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: "*/10 * * * *" # every 10 minutes - tune to taste
   workflow_dispatch: {} # allows a manual "check now" run
